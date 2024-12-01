@@ -1,97 +1,92 @@
 import json
-import os
+import uuid
 
 
 class Book:
-    def __init__(self, id, title, author, years, status='в наличии'):
-        self.id = id
+    def __init__(self, title, author, year, status='в наличии'):
+        self.id = str(uuid.uuid4())
         self.title = title
         self.author = author
-        self.years = years
+        self.year = year
         self.status = status
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'title': self.title,
             'author': self.author,
-            'years': self.years,
+            'year': self.year,
             'status': self.status,
         }
 
+    @staticmethod
+    def from_dict(data: dict) -> "Book":
+        book = Book(data["title"], data["author"], data["year"], data["status"])
+        book.id = data["id"]
+        return book
+
 
 class Library:
-    def __init__(self, filename='library.json'):
-        self.filename = filename
-        self.books = []
-        self.load_books()
+    def __init__(self, file_path: str = "library.json"):
+        self.file_path = file_path
+        self.books = self._load_books()
 
-    def load_books(self):
-        """Загружает книги из файла."""
-        if os.path.exists(self.filename):
-            with open(self.filename, 'r', encoding='utf-8') as file:
-                try:
-                    books_data = json.load(file)
-                    self.books = [Book(**book) for book in books_data]
-                except json.JSONDecodeError:
-                    print("Ошибка чтения файла. Проверьте формат JSON.")
-                    self.books = []  # Установить пустой список, если произошла ошибка
+    def _load_books(self) -> list[Book]:
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+                return [Book.from_dict(book) for book in data]
+        except FileNotFoundError:
+            return []
+        except json.JSONDecodeError:
+            print("Ошибка чтения данных. Файл повреждён.")
+            return []
 
-    def save_books(self):
-        """Сохраняет книги в файл."""
-        with open(self.filename, 'w', encoding='utf-8') as file:
+    def _save_books(self):
+        with open(self.file_path, "w", encoding="utf-8") as file:
             json.dump([book.to_dict() for book in self.books], file, ensure_ascii=False, indent=4)
 
-    def add_book(self, title, author, year):
-        """Добавляет новую книгу в библиотеку."""
-        book_id = len(self.books) + 1
-        new_book = Book(book_id, title, author, year)
-        self.books.append(new_book)
-        self.save_books()
-        print(f'Книга "{title}" добавлена с ID {book_id}.')
+    def add_book(self, title: str, author: str, year: str):
+        book = Book(title, author, year)
+        self.books.append(book)
+        self._save_books()
+        print(f'Книга "{title}" добавлена с ID {book.id}.')
 
-    def remove_book(self, book_id):
-        """Удаляет книгу по ID."""
-        for book in self.books:
-            if book.id == book_id:
-                self.books.remove(book)
-                self.save_books()
-                print(f'Книга с ID {book_id} удалена.')
-                return
-        print(f'Книга с ID {book_id} не найдена.')
+    def remove_book(self, book_id: str):
+        book = next((b for b in self.books if b.id == book_id), None)
+        if book:
+            self.books.remove(book)
+            self._save_books()
+            print(f'Книга "{book.title}" c ID {book_id} удалена')
+        else:
+            print(f'Книга с ID {book_id} не найдена.')
 
-    def search_books(self, query):
-        """Ищет книги по title, author или year."""
-        results = [book for book in self.books if
-                   query in book.title or query in book.author or query in str(book.year)]
+    def search_books(self, field: str, value: str):
+        if field == "year":
+            value = str(value)
+        results = [book for book in self.books if str(getattr(book, field, '')).lower() == value.lower()]
         if results:
             for book in results:
-                print(
-                    f'ID: {book.id}, Title: {book.title}, Author: {book.author}, Year: {book.year}, Status: {book.status}')
+                print(book.to_dict())
         else:
-            print('Книги не найдены.')
+            print('Ничего не найдено.')
+        return results
 
     def display_books(self):
-        """Отображает все книги в библиотеке."""
-        if not self.books:
-            print('Библиотека пуста.')
-            return
-        for book in self.books:
-            print(
-                f'ID: {book.id}, Title: {book.title}, Author: {book.author}, Year: {book.year}, Status: {book.status}')
+        if self.books:
+            for book in self.books:
+                print(book.to_dict())
+        else:
+            print(f'Библиотека пуста')
 
-    def update_status(self, book_id, new_status):
-        """Изменяет статус книги по ID."""
-        for book in self.books:
-            if book.id == book_id:
-                if new_status in ["в наличии", "выдана"]:
-                    book.status = new_status
-                    self.save_books()
-                    print(f'Статус книги с ID {book_id} изменён на "{new_status}".')
-                else:
-                    print('Некорректный статус. Доступные статусы: "в наличии", "выдана".')
-                return
-        print(f'Книга с ID {book_id} не найдена.')
+    def update_status(self, book_id: str, new_status: str):
+        book = next((b for b in self.books if b.id == book_id), None)
+        if book:
+            book.status = new_status
+            self._save_books()
+            print(f'Статус книги "{book.title}" с ID {book_id} обновлен на "{new_status}".')
+        else:
+            print(f'Книга с ID {book_id} не найдена.')
 
 
 def main():
@@ -102,35 +97,34 @@ def main():
         print("\nМеню:")
         print("1. Добавить книгу")
         print("2. Удалить книгу")
-        print("3. Искать книги")
+        print("3. Найти книгу")
         print("4. Отобразить все книги")
         print("5. Изменить статус книги")
-        print("6. Выход")
+        print("6. Выйти")
+        choice = input("Выберите действие: ")
 
-        choice = input("Выберите опцию: ")
-
-        if choice == '1':
+        if choice == "1":
             title = input("Введите название книги: ")
             author = input("Введите автора книги: ")
-            year = input("Введите год издания: ")
+            year = int(input("Введите год издания: "))
             library.add_book(title, author, year)
-        elif choice == '2':
-            book_id = int(input("Введите ID книги для удаления: "))
+        elif choice == "2":
+            book_id = input("Введите ID книги: ")
             library.remove_book(book_id)
-        elif choice == '3':
-            query = input("Введите запрос для поиска (title, author или year): ")
-            library.search_books(query)
-        elif choice == '4':
+        elif choice == "3":
+            field = input("Введите поле для поиска (title, author, year): ")
+            value = input("Введите значение для поиска: ")
+            library.search_books(field, value)
+        elif choice == "4":
             library.display_books()
-        elif choice == '5':
-            book_id = int(input("Введите ID книги для изменения статуса: "))
-            new_status = input("Введите новый статус (в наличии/выдана): ")
+        elif choice == "5":
+            book_id = input("Введите ID книги: ")
+            new_status = input("Введите новый статус ('в наличии' или 'выдана'): ")
             library.update_status(book_id, new_status)
-        elif choice == '6':
-            print("Выход из программы.")
+        elif choice == "6":
             break
         else:
-            print("Некорректный выбор. Пожалуйста, попробуйте снова.")
+            print("Некорректный выбор. Попробуйте снова.")
 
 
 if __name__ == '__main__':

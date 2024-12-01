@@ -1,16 +1,30 @@
 import json
 import uuid
+from typing import List, Dict, Optional
 
 
 class Book:
-    def __init__(self, title, author, year, status='в наличии'):
-        self.id = str(uuid.uuid4())
-        self.title = title
-        self.author = author
-        self.year = year
-        self.status = status
+    def __init__(self, title: str, author: str, year: int, status: str = 'в наличии') -> None:
+        """Инициализирует объект книги.
 
-    def to_dict(self) -> dict:
+        Args:
+            title (str): Название книги.
+            author (str): Автор книги.
+            year (int): Год издания книги.
+            status (str): Статус книги (по умолчанию 'в наличии').
+        """
+        self.id: str = str(uuid.uuid4())
+        self.title: str = title
+        self.author: str = author
+        self.year: int = year
+        self.status: str = status
+
+    def to_dict(self) -> Dict[str, str]:
+        """Преобразует объект книги в словарь.
+
+        Returns:
+            Dict[str, str]: Словарь с данными книги.
+        """
         return {
             'id': self.id,
             'title': self.title,
@@ -20,18 +34,36 @@ class Book:
         }
 
     @staticmethod
-    def from_dict(data: dict) -> "Book":
+    def from_dict(data: Dict[str, str]) -> "Book":
+        """Создает объект книги из словаря.
+
+        Args:
+            data (Dict[str, str]): Словарь с данными книги.
+
+        Returns:
+            Book: Объект книги.
+        """
         book = Book(data["title"], data["author"], data["year"], data["status"])
         book.id = data["id"]
         return book
 
 
 class Library:
-    def __init__(self, file_path: str = "library.json"):
-        self.file_path = file_path
-        self.books = self._load_books()
+    def __init__(self, file_path: str = "library.json") -> None:
+        """Инициализирует объект библиотеки.
 
-    def _load_books(self) -> list[Book]:
+        Args:
+            file_path (str): Путь к файлу для сохранения книг (по умолчанию 'library.json').
+        """
+        self.file_path: str = file_path
+        self.books: List[Book] = self._load_books()
+
+    def _load_books(self) -> List[Book]:
+        """Загружает книги из файла.
+
+        Returns:
+            List[Book]: Список книг.
+        """
         try:
             with open(self.file_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
@@ -42,17 +74,30 @@ class Library:
             print("Ошибка чтения данных. Файл повреждён.")
             return []
 
-    def _save_books(self):
+    def _save_books(self) -> None:
+        """Сохраняет книги в файл."""
         with open(self.file_path, "w", encoding="utf-8") as file:
             json.dump([book.to_dict() for book in self.books], file, ensure_ascii=False, indent=4)
 
-    def add_book(self, title: str, author: str, year: str):
+    def add_book(self, title: str, author: str, year: int) -> None:
+        """Добавляет книгу в библиотеку.
+
+        Args:
+            title (str): Название книги.
+            author (str): Автор книги.
+            year (int): Год издания книги.
+        """
         book = Book(title, author, year)
         self.books.append(book)
         self._save_books()
         print(f'Книга "{title}" добавлена с ID {book.id}.')
 
-    def remove_book(self, book_id: str):
+    def remove_book(self, book_id: str) -> None:
+        """Удаляет книгу из библиотеки по её ID.
+
+        Args:
+            book_id (str): Уникальный идентификатор книги.
+        """
         book = next((b for b in self.books if b.id == book_id), None)
         if book:
             self.books.remove(book)
@@ -61,7 +106,16 @@ class Library:
         else:
             print(f'Книга с ID {book_id} не найдена.')
 
-    def search_books(self, field: str, value: str):
+    def search_books(self, field: str, value: str) -> List[Book]:
+        """Ищет книги по заданному полю и значению.
+
+        Args:
+            field (str): Поле для поиска (title, author, year).
+            value (str): Значение для поиска.
+
+        Returns:
+            List[Book]: Список найденных книг.
+        """
         if field == "year":
             value = str(value)
         results = [book for book in self.books if str(getattr(book, field, '')).lower() == value.lower()]
@@ -70,16 +124,23 @@ class Library:
                 print(book.to_dict())
         else:
             print('Ничего не найдено.')
-        return results
+        return results  # Возвращат результаты поиска, нужно для теста
 
-    def display_books(self):
+    def display_books(self) -> None:
+        """Отображает все книги в библиотеке."""
         if self.books:
             for book in self.books:
                 print(book.to_dict())
         else:
             print(f'Библиотека пуста')
 
-    def update_status(self, book_id: str, new_status: str):
+    def update_status(self, book_id: str, new_status: str) -> None:
+        """Обновляет статус книги.
+
+        Args:
+            book_id (str): Уникальный идентификатор книги.
+            new_status (str): Новый статус книги.
+        """
         book = next((b for b in self.books if b.id == book_id), None)
         if book:
             book.status = new_status
@@ -89,7 +150,7 @@ class Library:
             print(f'Книга с ID {book_id} не найдена.')
 
 
-def main():
+def main() -> None:
     """Основная функция для взаимодействия с пользователем."""
     library = Library()
 
@@ -129,4 +190,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

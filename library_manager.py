@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 class Book:
@@ -116,6 +116,10 @@ class Library:
         Returns:
             List[Book]: Список найденных книг.
         """
+        if field not in {"title", "author", "year"}:
+            print("Некорректное поле для поиска. Используйте 'title', 'author' или 'year'.")
+            return []
+
         if field == "year":
             value = str(value)
         results = [book for book in self.books if str(getattr(book, field, '')).lower() == value.lower()]

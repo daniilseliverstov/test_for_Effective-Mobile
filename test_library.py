@@ -3,14 +3,17 @@ import json
 import os
 from io import StringIO
 from unittest.mock import patch
-from library_manager import Book, Library
+from backend.Book import Book
+from backend.Library import Library
+from backend.JsonBookStorage import JsonBookStorage
 
 
 class TestLibrary(unittest.TestCase):
     def setUp(self) -> None:
         """Создает временный файл для тестирования и инициализирует библиотеку."""
         self.test_file: str = 'test_library.json'
-        self.library: Library = Library(file_path=self.test_file)
+        self.storage = JsonBookStorage(file_path=self.test_file)  # Создаем экземпляр JsonBookStorage
+        self.library: Library = Library(storage=self.storage)  # Передаем хранилище в библиотеку
 
     def tearDown(self) -> None:
         """Удаляет временный файл после завершения тестов."""
@@ -71,7 +74,7 @@ class TestLibrary(unittest.TestCase):
     def test_load_books_from_file(self) -> None:
         """Тестирует загрузку книг из файла."""
         self.library.add_book("1984", "George Orwell", 1949)
-        self.library = Library(file_path=self.test_file)  # Перезагружаем библиотеку
+        self.library = Library(storage=self.storage)  # Перезагружаем библиотеку с тем же хранилищем
         self.assertEqual(len(self.library.books), 1)
         self.assertEqual(self.library.books[0].title, "1984")
 
